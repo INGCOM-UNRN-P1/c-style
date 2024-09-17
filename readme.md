@@ -1,24 +1,23 @@
-# C Style
+# Cuestiones de estilo C
 
-These are my favorite C programming practices. Some rules are as trivial as style, while others are more intricate. I follow a few rules religiously, and others I use as a guideline. I prioritize correctness, readability, simplicity and maintainability over speed because [premature optimization is the root of all evil](http://c2.com/cgi/wiki?PrematureOptimization).
+Éstas son mis prácticas favoritas de programación en C. Algunas triviales, mientras que otras son más intrincadas. Sigo algunas reglas religiosamente, y otras las uso como guía. Priorizo la corrección, la legibilidad, la simplicidad y la mantenibilidad sobre la velocidad porque [la optimización prematura es la raíz de todo el mal](http://c2.com/cgi/wiki?PrematureOptimization).
 
-**Write correct, readable, simple and maintainable software, and tune it when you're done**, with benchmarks to identify the choke points. Also, modern compilers *will* change computational complexities. Simplicity can often lead you to the best solution anyway: it's easier to write a linked list than it is to get an array to grow, but it's harder to index a list than it is to index an array.
+**Escribí software correcto, legible, sencillo y fácil de mantener, y ajustalo cuando termines**, con puntos de referencia para identificar los puntos flojos. Además, los compiladores modernos *cambiarán* las complejidades computacionales. De todas formas, la simplicidad puede llevarte a menudo a la mejor solución: es más fácil escribir una lista enlazada que hacer crecer un arreglo, pero es más difícil indexar una lista que un arreglo.
 
-Backwards compatibility (e.g. ANSI C) is rarely important to me. In my opinion, backwards compatibility holds everyone back. I think we should use new technologies and new techniques if we can, to move everyone forward, if only a bit.
+La compatibilidad hacia atrás (por ejemplo, ANSI C) rara vez es importante para mí. En mi opinión, la retrocompatibilidad frena a todo el mundo. Creo que deberíamos utilizar nuevas tecnologías y nuevas técnicas si podemos, para que todos progresemos, aunque sólo sea un poco.
 
-If you don't agree with something here, that's perfectly fine. Pick and choose what you like, and what works for your own situation. These rules aren't intended to be universal admonitions about quality: they're just my preferences, and work well for what I do, and what I care about.
+Si no estás de acuerdo con algo, no pasa nada. Elige lo que más te guste y lo que mejor se adapte a tu situación. Estas reglas no pretenden ser advertencias universales sobre la calidad: son sólo mis preferencias, y funcionan bien para lo que hago y lo que me importa.
 
-Writing this guide has made me deeply consider, and reconsider, best C programming practices. I've changed my opinion multiple times on many of the rules in this document.
+Escribir esta guía me ha hecho considerar profundamente, y reconsiderar, las mejores prácticas de programación en C. He cambiado de opinión varias veces sobre muchas de las reglas de este documento.
 
-So, I'm certain I'm wrong on even more points. This is a constant work-in-progress; issues and pull-requests are very welcome. This guide is licensed under the [Creative Commons Attribution-ShareAlike](/license.md), so I'm not liable for anything you do with this, etc.
+Estoy seguro de que me equivoco en más puntos. Se trata de un trabajo constante, en donde se aceptan sugerencias y peticiones. Esta guía está bajo la licencia [Creative Commons Attribution-ShareAlike](/license.md), así que no soy responsable de nada de lo que hagas con esto, etc.
 
 ---
 
 
+#### Desarrolla y compila siempre con todas las advertencias (y más) activadas.
 
-#### Always develop and compile with all warnings (and more) on
-
-No excuses here. Always develop and compile with warnings on. It turns out, though, that `-Wall` and `-Wextra` actually don't enable "all" warnings. There are a few others that can be really helpful:
+No hay excusas. Desarrolla y compila siempre con las advertencias activadas. Resulta, sin embargo, que `-Wall` y `-Wextra` en realidad no activan «todas» las advertencias. Hay algunas otras que pueden ser realmente útiles:
 
 ``` make
 CFLAGS += -Wall -Wextra -Wpedantic \
@@ -26,13 +25,13 @@ CFLAGS += -Wall -Wextra -Wpedantic \
           -Wwrite-strings -Wstrict-prototypes -Wold-style-definition \
           -Wredundant-decls -Wnested-externs -Wmissing-include-dirs
 
-# GCC warnings that Clang doesn't provide:
+# Warnings de GCC que Clang no proporciona:
 ifeq ($(CC),gcc)
     CFLAGS += -Wjump-misses-init -Wlogical-op
 endif
 ```
 
-Compiling with optimizations on can also help to detect errors:
+Compilar con las optimizaciones activadas también puede ayudar a detectar errores:
 
 ``` make
 CFLAGS += -O2
@@ -40,150 +39,117 @@ CFLAGS += -O2
 
 
 
-#### Use GCC's and Clang's `-M` to automatically generate object file dependencies
+#### Utilice la opción `-M` de GCC y Clang para generar automáticamente dependencias de archivos objeto
 
-The GNU Make Manual [touches](https://www.gnu.org/software/make/manual/make.html#Automatic-Prerequisites) on how to automatically generate the dependencies of your object files from the source file's `#include`s. The example rule given in the manual is a bit complicated. Here's the rules I use:
+El manual de GNU Make [touches](https://www.gnu.org/software/make/manual/make.html#Automatic-Prerequisites) sobre cómo generar automáticamente las dependencias de sus ficheros objeto a partir de los `#include`s del fichero fuente. La regla de ejemplo dada en el manual es un poco complicada. Aquí están las reglas que yo uso:
 
 ``` make
 depfiles = $(objects:.o=.d)
 
-# Have the compiler output dependency files with make targets for each
-# of the object files. The `MT` option specifies the dependency file
-# itself as a target, so that it's regenerated when it should be.
+# Haz que el compilador genere archivos de dependencia con objetivos make para cada
+# de los ficheros objeto. La opción `MT` especifica el archivo de dependencia
+# mismo como objetivo, para que sea regenerado cuando deba serlo.
+
 %.dep.mk: %.c
 	$(CC) -M -MP -MT '$(<:.c=.o) $@' $(CPPFLAGS) $< > $@
 
-# Include each of those dependency files; Make will run the rule above
-# to generate each dependency file (if it needs to).
+# Incluir cada uno de esos archivos de dependencia; Make ejecutará la regla anterior
+# para generar cada archivo de dependencia (si es necesario).
 -include $(depfiles)
 ```
 
 
+#### Escribe en el estándar más moderno que puedas.
 
-#### Write to the most modern standard you can
+C11 es mejor que C99, que es (mucho) mejor que C89. La compatibilidad con C11 aún está por llegar en GCC y Clang, pero muchas características están ahí. Si necesitas soportar otros compiladores a medio plazo, escribe en C99.
 
-C11 is better than C99, which is (far) better than C89. C11 support is still coming along in GCC and Clang, but many features are there. If you need to support other compilers in the medium-term, write to C99.
-
-Always write to a *standard*, as in `-std=c11`. Don't write to a dialect, like `gnu11`. Try to make do without non-standard language extensions: you'll thank yourself later.
-
+Escribe siempre en un *estándar*, como en `-std=c11`. No escribas en un dialecto, como `gnu11`. Intenta arreglártelas sin extensiones de lenguaje no estándar: te lo agradecerás más tarde.
 
 
-#### We can't get tabs right, so use spaces everywhere
 
-The idea of tabs was that we'd use tabs for indentation levels, and spaces for alignment. This lets people choose an indentation width to their liking, without breaking alignment of columns.
+#### No conseguimos alinear bien con tabuladores, así que usamos espacios en todas partes
+
+La idea de los tabuladores era utilizar tabuladores para los niveles de sangría y espacios para la alineación. Esto permite a la gente elegir un ancho de sangría a su gusto, sin romper la alineación de las columnas.
 
 ``` c
 int main( void ) {
-|tab   |if ( pigs_can_fly() == true ) {
-|tab   ||tab   |developers_can_use_tabs( "and align columns "
-|tab   ||tab   |                         "with spaces!" );
+|tab   |if ( puede_volar(chancho) == true ) {
+|tab   ||tab   |programador_con_tabuladores( "y alinear columnas "
+|tab   ||tab   |                             "con espacios!" );
 |tab   |}
 }
 ```
 
-But, alas, we (and our editors) rarely get it right. There are four main problems posed by using tabs and spaces:
+Pero, por desgracia, nosotros (y nuestros editores) rara vez lo hacemos bien. El uso de tabulaciones y espacios plantea cuatro problemas principales:
 
-- Tabs for indentation lead to inconsistencies between opinions on line lengths. Someone who uses a tab width of 8 will hit 80 characters much sooner than someone who uses a tab width of 2. The only way to avoid this is to require a tab-width, which eliminates the benefit of tabs.
-- It's much harder to configure your editor to correctly handle tabs and spaces for each project, than it is to just handle spaces. See also: [Tabs vs Spaces: An Eternal Holy War](http://www.jwz.org/doc/tabs-vs-spaces.html)
-- It's harder to align things using only the space bar. It's much easier to hit tab twice than to hold the space bar for eight characters. A developer on your project *will* make this mistake eventually. If you use spaces for indentation and alignment, you can hit the tab key in either situation, which is quick, easy and not prone to errors.
-- It's easier to prevent tab/space errors on projects that use only spaces, because all they need to do is detect for any tabs at all. To prevent against tabs used for alignment on a project that uses tabs, you'll need to come up with a regular expression.
+- Los tabuladores para la sangría provocan incoherencias entre las opiniones sobre la longitud de las líneas. Alguien que utilice un ancho de tabulación de 8 llegará a los 80 caracteres mucho antes que alguien que utilice un ancho de tabulación de 2. La única forma de evitarlo es exigir un ancho de tabulación, lo que elimina la ventaja de los tabuladores.
+- Es mucho más difícil configurar su editor para que maneje correctamente los tabuladores y los espacios para cada proyecto, que manejar sólo los espacios. Véase también: [Tabs vs Spaces: Una eterna guerra santa](http://www.jwz.org/doc/tabs-vs-spaces.html)
+- Es más difícil alinear cosas usando sólo la barra espaciadora. Es mucho más fácil pulsar tabulador dos veces que mantener la barra espaciadora durante ocho caracteres. Un desarrollador en tu proyecto *cometerá* este error eventualmente. Si utilizas espacios para la sangría y la alineación, puedes pulsar la tecla de tabulación en cualquier situación, lo que es rápido, fácil y no propenso a errores.
+- Es más fácil prevenir errores de tabulación/espaciado en proyectos que usan sólo espacios, porque todo lo que tienen que hacer es detectar cualquier tabulación. Para prevenir contra tabuladores usados para alineación en un proyecto que usa tabuladores, necesitarás crear una expresión regular.
 
-Cut the complexity, and use spaces everywhere. You may have to adjust to someone else's indent width every now and then. Tough luck!
+Reducí la complejidad y usá espacios por todos lados. Puede que tengas que ajustarte al ancho de sangría de otra persona de vez en cuando. Mala suerte.
+
+#### Nunca con más de 79 caracteres por línea
+
+Nunca escribas líneas de más de 79 caracteres.
+
+80 caracteres por línea es un estándar de facto para la visualización de código. Los lectores de tu código que confían en ese estándar, y tienen su terminal o editor dimensionado a 80 caracteres de ancho, pueden caber más en la pantalla colocando ventanas una al lado de la otra.
+
+Debes ceñirte a un máximo de 79 caracteres para que siempre haya un espacio en la última columna. Esto hace más evidente que la línea no continúa en la siguiente. También proporciona un margen derecho.
+
+Si superas los 80 caracteres, estás haciendo que tu código sea significativamente más difícil de leer para las personas que intentan confiar en el estándar de 80 columnas. O bien la línea se enrolla, lo que dificulta la lectura, o bien los lectores tienen que desplazar la ventana hacia la derecha para leer los últimos caracteres. Cualquiera de estos dos resultados hace que el código sea más difícil de leer que si hubieras resuelto un salto de línea tú mismo.
+
+Es más difícil leer líneas largas porque tus ojos tienen que desplazarse más lejos para llegar al principio de la siguiente línea, y cuanto más lejos tengan que ir, más probable es que tengas que reajustarte visualmente. Los estilos de ancho 100 y 120 son más fáciles de escribir, pero más difíciles de leer.
+
+Puede ser muy tentador dejar que una línea aquí o allá supere los 79 caracteres, pero sus lectores pagarán el precio cada vez que tengan que leer una línea así. Trate los 79 caracteres como un límite estricto, sin peros. Averigüe cuál es la mejor manera de dividir las líneas largas y sus lectores se lo agradecerán.
+
+Haga lo que hacen los demás, escriba para las 80 columnas y todos saldremos ganando.
+
+* [Emacs Wiki: Regla de las ochenta columnas](http://www.emacswiki.org/emacs/EightyColumnRule)
+* [Programmers' Stack Exchange: ¿Sigue siendo relevante el límite de 80 caracteres?](http://programmers.stackexchange.com/questions/604/is-the-80-character-limit-still-relevant-in-times-of-widescreen-monitors)
 
 
-#### Never have more than 79 characters per line
+#### Comenta `#include`s de bibliotecas no estándar para decir qué símbolos utilizas de ellas
 
-Never write lines longer than 79 characters.
-
-80-characters-per-line is a de-facto standard for viewing code. Readers of your code who rely on that standard, and have their terminal or editor sized to 80 characters wide, can fit more on the screen by placing windows side-by-side.
-
-You should stick to a maximum of 79 characters so that there's always a space in the last column. This makes it more obvious the line doesn't continue onto the next line. It also provides a right-hand margin.
-
-If you go over 80 characters, you're making your code significantly harder to read for people who try to rely on the 80-columns standard. Either your line will wrap, which is hard to read, or your readers will have to scroll the window to the right to get the last few characters. Either of these results in code that's harder to read than if you had just worked out a line-break yourself.
-
-It's harder to read long lines because your eyes have to travel further to get to the start of the next line, and the further they have to go, the more likely you'll have to visually readjust. 100-wide and 120-wide styles are easier to write, but harder to read.
-
-It can be very tempting to let a line here or there go over 79 characters, but your readers will pay the price every time they have to read such a line. Treat 79 characters as a hard limit - no ifs or buts. Work out how best to break long lines, and your readers will thank you.
-
-Do what everyone else is doing, and write for 80-column views, and we'll all be better off.
-
-* [Emacs Wiki: Eighty Column Rule](http://www.emacswiki.org/emacs/EightyColumnRule)
-* [Programmers' Stack Exchange: Is the 80 character limit still relevant?](http://programmers.stackexchange.com/questions/604/is-the-80-character-limit-still-relevant-in-times-of-widescreen-monitors)
-
-
-#### Use `//` comments everywhere, never `/* ... */`
-
-Stick to single-line comments, and cut the complexity. Compared to single-line comments, multi-line comments:
-
-- are rarely used with a blank margin, so they're just as character-heavy
-- have a style, which has to be specified and adhered to
-- often have `*/` on its own line, so they're more line-expensive
-- have weird rules about embedded `/*` and `*/`
-- are harder/impossible to block-edit, and to extend
-- are more visually-cluttering than `//`
-
-You have to use `/* ... */` for inline comments in multi-line `#define`s, though:
+Los espacios de nombres son uno de los grandes avances del desarrollo de software. Por desgracia, C se lo perdió (los ámbitos no son espacios de nombres). Pero, como los espacios de nombres son tan fantásticos, deberíamos intentar simularlos con comentarios.
 
 ``` c
-#define MAGIC( x ) \
-    /* Voodoo magic happens here. */ \
-    ...
-```
-
-But I often prefer to just add `//` comments after the macro body describing the tricky bits. I think this makes the macro body easier to read, but still provides the (much-needed) documentation.
-
-
-
-#### Program in American English
-
-Developing in the same language, using the same spelling and vocabulary, is important. This is especially true in free-software projects with contributors from around the world. You should use the same language consistently for your project, in code, comments and documentation.
-
-So, for American English, write `color`, `flavor`, `center`, `meter`, `neighbor`, `defense`, `routing`, `sizable`, `burned`, and so on ([see more](https://en.wikipedia.org/wiki/American_and_British_English_spelling_differences)). I'm Australian, but I appreciate that most programmers will be learning and using American English. Also, American English spelling is consistently more phonetic and consistent than British English. British English tends to evolve towards American English for this reason, I think.
-
-
-
-#### Comment non-standard-library `#include`s to say what symbols you use from them
-
-Namespaces are one of the great advances of software development. Unfortunately, C missed out (scopes aren't namespaces). But, because namespaces are so fantastic, we should try to simulate them with comments.
-
-``` c
-#include <test.c/test.h> // Test, tests_run
+#include <test.h> // Test, tests_run
 #include "trie.h" // Trie, Trie_*
 ```
 
-This provides a few benefits:
+Esto ofrece algunas ventajas:
 
-- readers aren't forced to refer to documentation or use `grep` to find out where a symbol is defined (or, if you don't follow the rule below, where it comes from): your code just tells them
-- developers have a hope of being able to determine which `#include`s can be removed and which can't
-- developers are forced to consider namespace pollution (which is otherwise ignored in most C code), and encourages them to only provide small, well-defined headers
+- los lectores no se ven obligados a consultar la documentación o utilizar `grep` para averiguar dónde está definido un símbolo (o, si no sigue la regla siguiente, de dónde procede): su código simplemente se lo dice
+- los desarrolladores tienen la esperanza de poder determinar qué `#include`s se pueden eliminar y cuáles no
+- los desarrolladores se ven forzados a considerar la contaminación del espacio de nombres (que de otro modo se ignora en la mayoría del código C), y les anima a proporcionar sólo cabeceras pequeñas y bien definidas
 
-The downside is that the `#include` comments aren't checked or enforced. I've been intending to write a checker for this for quite some time, but for now, there's nothing to stop the comments from becoming wrong - either mentioning symbols that aren't used anymore, or not mentioning symbols that are used. In your project, try to nip these problems in the bud, to stop it from spreading. You should always be able to trust your code.  This maintenance is annoying, for sure, but I think `#include` comments are worth it in aggregate.
+El inconveniente es que los comentarios `#include` no se comprueban ni se hacen cumplir. He estado intentando escribir un comprobador para esto durante bastante tiempo, pero por ahora, no hay nada que impida que los comentarios sean erróneos - ya sea mencionando símbolos que ya no se usan, o no mencionando símbolos que sí se usan. En tu proyecto, intenta cortar estos problemas de raíz, para evitar que se extiendan. Siempre debes poder confiar en tu código.  Este mantenimiento es molesto, seguro, pero creo que los comentarios `#include` merecen la pena en conjunto.
 
-Finding where things come from is always one of my main challenges when learning a codebase. It could be a whole lot easier. I've never seen any projects that write `#include` comments like this, but I'd love to see it become a thing.
-
-
-
-#### `#include` the definition of everything you use
-
-Don't depend on what your headers include. If your code uses a symbol, include the header file where that symbol is defined. Then, if your headers change their inclusions, your code won't break.
-
-Also, combined with the `#include` comment rule above, this saves your readers and fellow developers from having to follow a trail of includes just to find the definition of a symbol you're using. Your code should just tell them where it comes from.
+Encontrar de dónde vienen las cosas es siempre uno de mis principales retos cuando aprendo una base de código. Podría ser mucho más fácil. Nunca he visto ningún proyecto que escriba comentarios `#include` así, pero me encantaría que se convirtiera en algo habitual.
 
 
 
-#### Avoid unified headers
+#### `#include` la definición de todo lo que utilices.
 
-Unified headers are generally bad, because they relieve the library developer of the responsibility to provide loosely-coupled modules clearly separated by their purpose and abstraction. Even if the developer (thinks she) does this anyway, a unified header increases compilation time, and couples the user's program to the entire library, regardless of if they need it. There are numerous other disadvantages, touched on in the points above.
+No dependas de lo que incluyan tus cabeceras. Si tu código usa un símbolo, incluye el fichero de cabecera donde ese símbolo está definido. Entonces, si tus cabeceras cambian sus inclusiones, tu código no se romperá.
 
-There was a good exposé on unified headers on the [Programmers' Stack Exchange](http://programmers.stackexchange.com/questions/185773/library-design-provide-a-common-header-file-or-multiple-headers). An answer mentions that it's reasonable for something like GTK+ to only provide a single header file. I agree, but I think that's due to the bad design of GTK+, and it's not intrinsic to a graphical toolkit.
-
-It's harder for users to write multiple `#include`s just like it's harder for users to write types. Bringing difficulty into it is missing the forest for the trees.
+Además, combinado con la regla de comentario `#include` anterior, esto ahorra a tus lectores y compañeros desarrolladores tener que seguir un rastro de inclusiones sólo para encontrar la definición de un símbolo que estás usando. Tu código debería decirles de dónde viene.
 
 
+#### Evitar las cabeceras unificadas
 
-#### Provide include guards for all headers to prevent double inclusion
+Las cabeceras unificadas son generalmente malas, porque liberan al desarrollador de la biblioteca de la responsabilidad de proporcionar módulos sueltos claramente separados por su propósito y abstracción. Incluso si el desarrollador (piensa que) hace esto de todos modos, una cabecera unificada aumenta el tiempo de compilación, y acopla el programa del usuario a toda la biblioteca, independientemente de si la necesita. Hay muchas otras desventajas, mencionadas en los puntos anteriores.
 
-[Include guards](https://en.wikipedia.org/wiki/Include_guard) let you include a header file "twice" without it breaking compilation.
+Hubo una buena exposición sobre las cabeceras unificadas en [Programmers' Stack Exchange](http://programmers.stackexchange.com/questions/185773/library-design-provide-a-common-header-file-or-multiple-headers). Una respuesta menciona que es razonable que algo como GTK+ sólo proporcione un único archivo de cabecera. Estoy de acuerdo, pero creo que eso se debe al mal diseño de GTK+, y no es intrínseco a un conjunto de herramientas gráficas.
+
+Es más difícil para los usuarios escribir múltiples `#include`s al igual que es más difícil para los usuarios escribir tipos. Traer dificultad a esto es perderse el bosque por los árboles.
+
+
+
+#### Proporcionar guardas de inclusión para todas las cabeceras para evitar la doble inclusión
+
+[Include guards](https://en.wikipedia.org/wiki/Include_guard) permite incluir un archivo de cabecera «dos veces» sin que se interrumpa la compilación.
 
 ``` c
 // Good
@@ -195,13 +161,13 @@ It's harder for users to write multiple `#include`s just like it's harder for us
 #endif // ifndef INCLUDED_ALPHABET_H
 ```
 
-[Rob Pike argues against include guards](http://www.lysator.liu.se/c/pikestyle.html), saying you should just never include files in include files. He says that include guards still "result in thousands of needless lines of code passing through the lexical analyzer".
+[Rob Pike argumenta en contra de las protecciones de inclusión](http://www.lysator.liu.se/c/pikestyle.html), diciendo que nunca se deben incluir archivos en archivos de inclusión. Dice que las protecciones de inclusión «resultan en miles de líneas de código innecesarias que pasan por el analizador léxico».
 
-In fact, [GCC will detect include guards](http://gcc.gnu.org/onlinedocs/cppinternals/Guard-Macros.html), and won't read such files a second time. I don't know if other compilers perform this optimization.
+De hecho, [GCC detectará los include guards](http://gcc.gnu.org/onlinedocs/cppinternals/Guard-Macros.html), y no leerá tales ficheros una segunda vez. No sé si otros compiladores realizan esta optimización.
 
-I don't think it's a good idea to require your users include the dependencies of your header files. Your header file's dependencies shouldn't really be considered "public". It would enforce the rule "don't depend on what your header files include", but it falls apart as soon as header files are using things you don't need, like `FILE` or `bool`. Users shouldn't have to care about that if they don't need it themselves.
+No creo que sea una buena idea requerir a tus usuarios que incluyan las dependencias de tus ficheros de cabecera. Las dependencias de tus archivos de cabecera no deberían considerarse realmente «públicas». Aplicaría la regla «no dependas de lo que incluyen tus ficheros de cabecera», pero se desmorona en cuanto los ficheros de cabecera utilizan cosas que no necesitas, como `FILE` o `bool`. Los usuarios no deberían preocuparse por eso si no lo necesitan.
 
-So, always write include guards, and make your users' lives easy.
+Así que, escribe siempre «include guards», y haz la vida de tus usuarios más fácil.
 
 
 
