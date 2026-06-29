@@ -348,33 +348,43 @@ bool print_steps = false;        // Good - intent is clear
 
 
 
-#### Explicitly compare values; don't rely on truthiness
+#### Compará explicitamente valores, no te fíes de su "veracidad"
 
-Explicit comparisons tell the reader what they're working with, because it's not always obvious in C, and it *is* always important. Are we working with counts or characters or booleans or pointers? The first thing I do when I see a variable being tested for truthiness in C is to hunt down the declaration to find its type. I really wish the programmer had just told me in the comparison.
+Las comparaciones explícitas indican al lector con qué está trabajando,
+porque no siempre es obvio en C, y *siempre* es importante. ¿Estamos
+trabajando con cuentas, caracteres, booleanos o punteros? Lo primero que
+hago cuando veo que se comprueba la veracidad de una variable en C es
+buscar su tipo en la declaración. Ojalá el programador me lo hubiera
+dicho en la comparación.
 
-``` c
-// Bad - what are these expressions actually testing for (if at all?)
-if ( on_fire );
-return !character;
-something( first( xs ) );
-while ( !at_work );
+```
+// Malo - ¿qué comprueban realmente estas expresiones?
+if ( encendido );
+return !caracter;
+something( primero( xs ) );
+while ( !trabajando );
 
-// Good - informative, and eliminates ambiguity
-if ( on_fire > 0 );
-return character == NULL;
-something( first( xs ) != '\0' );
-while ( at_work == false );
+// Bueno - informativo y elimina la ambigüedad
+if ( encendido > 0 );
+return caracter == NULL;
+something( primero( xs ) != '\0' );
+while ( trabajando == false );
 ```
 
-I'll often skip this rule for boolean functions named as a predicate, like `is_edible` or `has_client`. It's still not *completely* obvious what the conditional is checking for, but I usually consider the visual clutter of a `== true` or `== false` to be more of a hassle than a help to readers in this situation. Use your judgement.
+A menudo me salto esta regla para funciones booleanas nombradas como un predicado, como `es_comestible` o `tiene_cliente`. Sigue sin ser *completamente* obvio lo que el condicional está comprobando, pero normalmente considero que el desorden visual de `== true` o `== false` es más una molestia que una ayuda para los lectores en esta situación. Usa tu criterio.
 
 
+### Regla 0x7DCh:  Nunca cambies de estado dentro de una expresión
+Por ejemplo, con asignaciones o `++`.
 
-#### Never change state within an expression (e.g. with assignments or `++`)
+Los programas legibles (imperativos) fluyen de arriba a abajo: no de derecha
+a izquierda. Desgraciadamente, esto ocurre demasiado en la programación en C.
+Creo que el hábito y la práctica fueron iniciados por
+*El Lenguaje de Programación C*, y se ha mantenido en gran parte de la cultura
+desde entonces. Es un hábito realmente malo, y hace mucho más difícil seguir
+lo que tu programa está haciendo. Nunca cambies de estado en una expresión.
 
-Readable (imperative) programs flow from top to bottom: not right to left. Unfortunately, this happens way too much in C programming. I think the habit and practice was started by *The C Programming Language*, and it's stuck with much of the culture ever since. It's a really bad habit, and makes it so much harder to follow what your program is doing. Never change state in an expression.
-
-``` c
+```C
 trie_add( *child, ++word );     // Bad
 trie_add( *child, word + 1 );   // Good
 
@@ -388,14 +398,15 @@ if ( ( x = calc() ) == 0 );
 x = calc();
 if ( x == 0 );
 
-// Fine; technically an assignment within an expression
+// Bien; técnicamente una asignación dentro de una expresión
+
 a = b = c;
 
 while ( --atoms > 0 );          // Bad
 while ( atoms -= 1,             // Good
         atoms > 0 );
 
-// Fine; there's no better way, without repetition
+// Bien; técnicamente una asignación dentro de una expresión
 int w;
 while ( w = calc_width( shape ),
         !valid_width( w ) ) {
@@ -403,22 +414,29 @@ while ( w = calc_width( shape ),
 }
 ```
 
-Don't use multiple assignment unless the variables' values are semantically linked. If there are two variable assignments near each other that coincidentally have the same value, don't throw them into a multiple assignment just to save a line.
+No utilices la asignación múltiple a menos que los valores de las variables
+estén semánticamente relacionados. Si hay dos asignaciones de variables
+cercanas entre sí que casualmente tienen el mismo valor, no las incluya
+en una asignación múltiple sólo para ahorrar una línea.
 
-Use the comma operator, as above, judiciously. Do without it if you can:
+Usá el operador coma, como arriba, juiciosamente. Prescinda de él si puede:
 
-``` c
-// Bad
+
+```C
+// Feo
 for ( int i = 0, limit = get_limit( m ); i < limit; i += 1 ) {
     ...
 }
 
-// Better
+// Mejor
 int const limit = get_limit( x );
 for ( int i = 0; i < limit; i += 1 ) {
     ...
 }
 ```
+
+
+
 
 
 
@@ -471,7 +489,8 @@ else
 
 [CERT attempts to explain the integer conversion rules](https://www.securecoding.cert.org/confluence/display/seccode/INT02-C.+Understand+integer+conversion+rules), saying:
 
-> Misunderstanding integer conversion rules can lead to errors, which in turn can lead to exploitable vulnerabilities. Severity: medium, Likelihood: probable.
+> El malentendido de las reglas de conversión de enteros puede conducir a errores, que a su vez pueden conducir a vulnerabilidades explotables. Gravedad: media, Probabilidad: probable.
+
 
 *Expert C Programming* (a great book that explores the ANSI standard) also explains this in its first chapter. The takeaway is that you shouldn't declare `unsigned` variables just because they shouldn't be negative. If you want a larger maximum value, use a `long` or `long long` (the next size up).
 
@@ -1093,19 +1112,19 @@ Sticking to this rule means ditching incomplete struct types, but I don't really
 
 
 
-#### Prefer to return a value rather than modifying pointers
+#### Preferir devolver un valor en lugar de modificar punteros.
 
-This encourages immutability, cultivates [pure functions](https://en.wikipedia.org/wiki/Pure_function), and makes things simpler and easier to understand. It also improves safety by eliminating the possibility of a `NULL` argument.
+Esto fomenta la inmutabilidad, cultiva las [funciones puras](https://en.wikipedia.org/wiki/Pure_function), y hace las cosas más simples y fáciles de entender. También mejora la seguridad al eliminar la posibilidad de un argumento `NULL`.
 
 ``` c
-// Bad: unnecessary mutation (probably), and unsafe
+// Bad: mutación innecesaria (probablemente), e insegura
 void drink_mix( Drink * const drink, Ingredient const ingr ) {
     assert( drink != NULL );
     color_blend( &( drink->color ), ingr.color );
     drink->alcohol += ingr.alcohol;
 }
 
-// Good: immutability rocks, pure and safe functions everywhere
+// Bien: inmutabilidad rocas, funciones puras y seguras en todas partes
 Drink drink_mix( Drink const drink, Ingredient const ingr ) {
     return ( Drink ){
         .color = color_blend( drink.color, ingr.color ),
@@ -1114,11 +1133,10 @@ Drink drink_mix( Drink const drink, Ingredient const ingr ) {
 }
 ```
 
-This isn't always the best way to go, but it's something you should always consider.
+No siempre es lo mejor, pero siempre hay que tenerlo en cuenta.
 
 
-
-#### Use structs to name functions' optional arguments
+#### Usa structs para nombrar los argumentos opcionales de una función
 
 ``` c
 struct run_server_options {
@@ -1145,59 +1163,58 @@ int main( void )
 }
 ```
 
-I learnt this from *21st Century C*. So many C interfaces could be improved immensely if they took advantage of this technique. The importance and value of (syntactic) named arguments is all-too-often overlooked in software development. If you're not convinced, read Bret Victor's [Learnable Programming](http://worrydream.com/LearnableProgramming/).
+Aprendí esto de *21st Century C*. Muchas interfaces de C podrían mejorarse enormemente si aprovecharan esta técnica. La importancia y el valor de los argumentos (sintácticos) con nombre se pasan por alto con demasiada frecuencia en el desarrollo de software. Si no estás convencido, lee [Learnable Programming] de Bret Victor (http://worrydream.com/LearnableProgramming/).
 
-Don't use named arguments everywhere. If a function's only argument happens to be a struct, that doesn't necessarily mean it should become the named arguments for that function. A good rule of thumb is that if the struct is used outside of that function, you shouldn't hide it with a macro like above.
+No uses argumentos con nombre en todas partes. Si el único argumento de una función resulta ser una estructura, eso no significa necesariamente que deba convertirse en los argumentos con nombre de esa función. Una buena regla general es que si el struct se usa fuera de esa función, no deberías ocultarlo con una macro como la de arriba.
+
 
 ``` c
 // Good; the typecast here is informative and expected.
 book_new( ( Author ){ .name = "Dennis Ritchie" } );
 ```
-
+mutación innecesaria (probablemente), e insegura
 
 
 #### Always use designated initializers in struct literals
 
 ``` c
-// Bad - will break if struct members are reordered, and it's not
-// always clear what the values represent.
+// Malo - se romperá si los miembros de la estructura se reordenan, y no es
+// siempre claro lo que los valores representan.
 Fruit apple = { "red", "medium" };
-// Good; future-proof and descriptive
+// Bueno; a prueba de futuro y descriptivo
 Fruit watermelon = { .color = "green", .size = "large" };
 ```
 
-Sometimes I'll bend this rule for named arguments, by having a particular field be at the top of the struct, so that callers can call the function without having to name that single argument:
+A veces me salto esta regla para los argumentos con nombre, haciendo que un campo en particular esté en la parte superior de la estructura, para que las personas que llaman puedan llamar a la función sin tener que nombrar ese único argumento:
 
 ``` c
 run_server( "3490" );
 run_server( .port = "3490", .backlog = 10 );
 ```
 
-If you want to allow this, document it explicitly. It's then your responsibility to version your library correctly, if you change the ordering of the fields.
+Si quieres permitirlo, documéntalo explícitamente. Entonces es tu responsabilidad versionar tu biblioteca correctamente, si cambias el orden de los campos.
 
 
+#### Si sólo proporciona funciones de asignación y liberación para un miembro de la estructura, asigne memoria para toda la estructura.
 
-#### If you're providing allocation and free functions only for a struct member, allocate memory for the whole struct
-
-If you're providing `foo_alloc` and `foo_free` functions only so you can allocate memory for a member of the `Foo` struct, you've lost the benefits and safety of automatic storage. You may as well have the allocation and free methods allocate memory for the whole struct, so users can pass it outside the scope it was defined (without dereferencing it), if they want.
-
+Si estás proporcionando las funciones `foo_alloc` y `foo_free` sólo para poder asignar memoria a un miembro de la estructura `Foo`, has perdido los beneficios y la seguridad del almacenamiento automático. También puedes hacer que los métodos de asignación y liberación asignen memoria para toda la estructura, de forma que los usuarios puedan pasarla fuera del ámbito en el que fue definida (sin desreferenciarla), si así lo desean.
 
 
-#### Avoid getters and setters
+#### Evitá getters y setters
 
-If you're seeking encapsulation in C, you're probably overcomplicating things. Encourage your users to access and set struct members directly; never prefix members with `_` to denote an access level. Declare your struct invariants, and you don't need to worry about your users breaking things - it's their responsibility to provide a valid struct.
+Si está buscando encapsulación en C, probablemente esté complicando demasiado las cosas. Anima a tus usuarios a acceder y establecer los miembros de la estructura directamente; nunca prefijes los miembros con `_` para denotar un nivel de acceso. Declare sus invariantes de estructura, y no tendrá que preocuparse de que sus usuarios rompan cosas - es su responsabilidad proporcionar una estructura válida.
 
-As advised in [another rule](#always-prefer-to-return-a-value-rather-than-modifying-pointers), avoid mutability wherever you can.
+Como se aconseja en [otra regla](#always-prefer-to-return-a-value-rather-than-modifying-pointers), evita la mutabilidad siempre que se pueda.
 
 ``` c
-// Rather than:
+// En lugar de:
 void city_set_state( City * const c, char const * const state )
 {
     c->state = state;
     c->country = country_of_state( state );
 }
 
-// Always prefer immutability and purity:
+// Preferi siempre la inmutabilidad y la pureza:
 City city_with_state( City c, char const * const state )
 {
     c.state = state;
@@ -1210,7 +1227,7 @@ c = city_with_state( c, "BC" );
 printf( "%s is in %s, did you know?\n", c.name, c.country );
 ```
 
-But you should always provide an interface that allows for [declarative programming](https://en.wikipedia.org/wiki/Declarative_programming):
+Pero siempre debe proporcionar una interfaz que permita [programación declarativa](https://en.wikipedia.org/wiki/Declarative_programming):
 
 ``` c
 City const c = city_new( .name = "Boston", .state = "MA" );
@@ -1220,15 +1237,15 @@ printf( "I think I'm going to %s,\n"
 
 
 
-#### C isn't object-oriented, and you shouldn't pretend it is
+#### C no está orientado a objetos, y no deberías pretender que lo está
 
-C doesn't have classes, methods, inheritance, (nice) object encapsulation, or real polymorphism. Not to be rude, but: **deal with it**. C might be able to achieve crappy, complicated imitations of those things, but it's just not worth it.
+C no tiene clases, métodos, herencia, (bonito) encapsulamiento de objetos o polimorfismo real. No quiero ser grosero, pero: **acéptalo**. C puede ser capaz de conseguir imitaciones cutres y complicadas de esas cosas, pero no merece la pena.
 
-As it turns out, C already has an entirely-capable language model. In C, we define data structures, and we define functionality that uses combinations of those data structures. Data and functionality aren't intertwined in complicated contraptions, and this is a good thing.
+Resulta que C ya tiene un modelo de lenguaje totalmente capaz. En C, definimos estructuras de datos, y definimos funcionalidad que utiliza combinaciones de esas estructuras de datos. Los datos y la funcionalidad no están entrelazados en complicados artilugios, y esto es algo bueno.
 
-Haskell, at the forefront of language design, made the same decision to separate data and functionality. Learning Haskell is one of the best things a programmer can do to improve their technique, but I think it's especially beneficial for C programmers, because of the underlying similarities between C and Haskell. Yes, C doesn't have anonymous functions, and no, you won't be writing monads in C anytime soon. But by learning Haskell, you'll learn how to write good software without classes, without mutability, and with modularity. These qualities are very beneficial for good C programming.
+Haskell, a la vanguardia del diseño de lenguajes, tomó la misma decisión de separar datos y funcionalidad. Aprender Haskell es una de las mejores cosas que un programador puede hacer para mejorar su técnica, pero creo que es especialmente beneficioso para los programadores de C, debido a las similitudes subyacentes entre C y Haskell. Sí, C no tiene funciones anónimas, y no, no vas a escribir mónadas en C en un futuro próximo. Pero aprendiendo Haskell, aprenderás a escribir buen software sin clases, sin mutabilidad y con modularidad. Estas cualidades son muy beneficiosas para una buena programación en C.
 
-Embrace and appreciate what C offers, rather than attempting to graft other paradigms onto it.
+Abrazar y apreciar lo que ofrece C, en lugar de intentar injertar otros paradigmas en él.
 
 # Original de
 
